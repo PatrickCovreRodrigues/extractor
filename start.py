@@ -5,6 +5,8 @@ import logging
 
 import psycopg2
 from unidecode import unidecode
+from configs.tools.postgre import RDSPostgreSQLManager
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -44,8 +46,12 @@ class PDFTableExtractor:
         df.to_csv(path, sep=';', index=False, encoding='utf-8')
 
 
-    def add_infos(self):
-        pass
+    def add_infos(self, header, content):
+        infos = header.iloc[0]
+        df = pd.DataFrame([infos.value] * len(content), columns=header.column.columns)
+        content = pd.concat([content.reset_index(drop=True), df.reset_index(drop=True)], axis=1)
+        content['Data de Inserção'] = pd.Timestamp{'today'}.normalize()
+        return content
 
 
     @staticmethod
@@ -62,7 +68,9 @@ class PDFTableExtractor:
 
     def send_to_db(df, table_name):
         try:
-            connection = psycopg2.connect()
+            connection = RDSPostgreSQLManager().alchemy()
+            df.to_sql(table_name, connection, if_exists='append', index=False)
+            logging.info(f'Dados salvo {table_name}.')
         except Exception as e:
             logging.error(e)
 
