@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 
 file_name = 'corretora_jornada_de_dados'
-path = os.path.abspath(f'files/pdf/{file_name}.pdf')
+path = os.path.abspath(f'files/pdf/regr1/{file_name}.pdf')
 
 tables = camelot.read_pdf(
     path,
