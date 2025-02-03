@@ -4,8 +4,8 @@ import  pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
 
-file_name = 'corretora_jornada_de_dados'
-path = os.path.abspath(f'files/pdf/regr1/{file_name}.pdf')
+file_name = 'corretora_jornada_de_dados (2)'
+path = os.path.abspath(f'files/pdf/regra1/{file_name}.pdf')
 
 tables = camelot.read_pdf(
     path,
@@ -16,6 +16,4 @@ tables = camelot.read_pdf(
 )
 
 print(tables[0].parsing_report)
-
-
 print(tables[0].df)

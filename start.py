@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import logging
 
+from pygments.lexers import configs
+
 from configs.rules.regras import rules_dict
 from configs.tools.postgre import RDSPostgreSQLManager
 
@@ -48,8 +50,8 @@ class PDFTableExtractor:
             tables = camelot.read_pdf(
                 self.path,
                 flavor=self.configs['flavor'],
-                table_areas=table_areas,
-                columns=table_columns,
+                table_areas=configs['table_areas'] if table_areas is None else table_areas,
+                columns=configs['columns'] if table_columns is None else table_columns,
                 strip_text=self.configs['strip_text'],
                 page=self.configs['pages'],
             )
