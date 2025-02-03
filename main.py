@@ -39,47 +39,49 @@ class PDFExtractorApp:
 
     def show_pdf_page(self, page_number):
         # Converte a página para imagem e exibe no canvas
-        page = self.pdf_document.load_page(page_number)
-        pix = page.get_pixmap()
+        self.page = self.pdf_document.load_page(page_number)
+        pix = self.page.get_pixmap()
+        self.pdf_width, self.pdf_height = pix.width, pix.height  # Dimensões reais do PDF
+
         img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
         img.thumbnail((800, 600))  # Ajusta o tamanho da imagem
         self.img_tk = ImageTk.PhotoImage(img)
 
         self.canvas.create_image(0, 0, image=self.img_tk, anchor="nw")
 
+        # Dimensões da imagem no Canvas
+        self.canvas_width, self.canvas_height = self.img_tk.width(), self.img_tk.height()
+
+    def convert_canvas_to_pdf_coords(self, x, y):
+        """Converte coordenadas do Canvas para coordenadas reais do PDF."""
+        pdf_x = (x / self.canvas_width) * self.pdf_width
+        pdf_y = (y / self.canvas_height) * self.pdf_height
+        return pdf_x, pdf_y
+
     def on_button_press(self, event):
-        self.start_x = event.x
-        self.start_y = event.y
+        self.start_x, self.start_y = self.convert_canvas_to_pdf_coords(event.x, event.y)
         if self.rect:
             self.canvas.delete(self.rect)
 
     def on_mouse_drag(self, event):
-        # Atualiza o retângulo conforme o movimento do mouse
+        end_x, end_y = self.convert_canvas_to_pdf_coords(event.x, event.y)
         if self.rect:
             self.canvas.delete(self.rect)
-        self.rect = self.canvas.create_rectangle(self.start_x, self.start_y, event.x, event.y, outline="red")
+        self.rect = self.canvas.create_rectangle(
+            event.x, event.y, self.start_x * (self.canvas_width / self.pdf_width),
+            self.start_y * (self.canvas_height / self.pdf_height),
+            outline="red"
+        )
 
     def on_button_release(self, event):
-        self.end_x = event.x
-        self.end_y = event.y
-        self.extract_area(self.start_x, self.start_y, self.end_x, self.end_y)
-
-    def extract_area(self, x1, y1, x2, y2):
-        # Ajusta as coordenadas para melhorar o alinhamento
-        adjusted_x1 = x1
-        adjusted_y1 = y1 - 10  # Ajuste para cima
-        adjusted_x2 = x2
-        adjusted_y2 = y2 - 10  # Ajuste para cima
-
-        # Converte as coordenadas para a área no formato que o PyMuPDF usa
-        self.table_area = [adjusted_x1, adjusted_y1, adjusted_x2, adjusted_y2]
-        print(f"Área selecionada: {self.table_area}")
+        end_x, end_y = self.convert_canvas_to_pdf_coords(event.x, event.y)
+        self.table_area = [self.start_x, self.start_y, end_x, end_y]
+        print(f"Área selecionada (coordenadas PDF): {self.table_area}")
 
         # Extrai o texto da área selecionada usando PyMuPDF
-        page = self.pdf_document.load_page(self.page_number)
-        rect = fitz.Rect(adjusted_x1, adjusted_y1, adjusted_x2, adjusted_y2)
-        text = page.get_text("text", clip=rect)
-        print(f"Texto extraído: {text}")
+        rect = fitz.Rect(self.table_area)
+        text = self.page.get_text("text", clip=rect)
+        print(f"Texto extraído:\n{text}")
 
     def extract_table(self):
         if not hasattr(self, 'table_area'):
@@ -89,13 +91,12 @@ class PDFExtractorApp:
         # Lê a tabela usando Camelot com a área selecionada
         tables = camelot.read_pdf(
             self.pdf_path,
-            pages='1',
+            pages=str(self.page_number + 1),  # Camelot usa indexação a partir de 1
             flavor='stream',
-            table_areas=[",".join(map(str, self.table_area))],
-            columns=['65, 107, 156, 212, 280, 336, 383, 450']
+            table_areas=[",".join(map(str, self.table_area))]
         )
 
-        if tables:
+        if tables and len(tables) > 0:
             print(tables[0].df)
         else:
             print("Nenhuma tabela encontrada.")
